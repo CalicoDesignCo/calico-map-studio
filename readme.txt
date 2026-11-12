@@ -2,7 +2,7 @@
 Contributors: calicodesign
 Requires at least: 6.2
 Requires PHP: 7.4
-Stable tag: 0.4.0
+Stable tag: 0.4.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -60,6 +60,9 @@ Browse compatible styles: https://snazzymaps.com/explore
 Bundled style: Ultra Light with Labels by Anonymous, https://snazzymaps.com/style/151/ultra-light-with-labels (CC0-1.0). See THIRD-PARTY-NOTICES.md.
 
 == Changelog ==
+= 0.4.1 =
+Accepts quoted numeric style values such as "weight":"2.00", normalizes them to JSON numbers without changing their value, and identifies the exact rule, property and expected range when validation fails.
+
 = 0.4.0 =
 Added universal paste/apply/copy style code controls, conversion to visual rules, the original Ultra Light with Labels preset, a Snazzy Maps browse link and decimal line-weight support.
 
