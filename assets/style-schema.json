@@ -1,0 +1,51 @@
+{
+  "features": {
+    "all": "All features",
+    "administrative": "Administrative — All",
+    "administrative.country": "Administrative › Country",
+    "administrative.province": "Administrative › Province / state",
+    "administrative.locality": "Administrative › Locality / city",
+    "administrative.neighborhood": "Administrative › Neighborhood",
+    "administrative.land_parcel": "Administrative › Land parcel",
+    "landscape": "Landscape — All",
+    "landscape.man_made": "Landscape › Man made",
+    "landscape.natural": "Landscape › Natural",
+    "landscape.natural.landcover": "Landscape › Natural › Land cover",
+    "landscape.natural.terrain": "Landscape › Natural › Terrain",
+    "poi": "Points of interest — All",
+    "poi.attraction": "Points of interest › Attraction",
+    "poi.business": "Points of interest › Business",
+    "poi.government": "Points of interest › Government",
+    "poi.medical": "Points of interest › Medical",
+    "poi.park": "Points of interest › Park",
+    "poi.place_of_worship": "Points of interest › Place of worship",
+    "poi.school": "Points of interest › School",
+    "poi.sports_complex": "Points of interest › Sports complex",
+    "road": "Road — All",
+    "road.highway": "Road › Highway",
+    "road.highway.controlled_access": "Road › Highway › Controlled access",
+    "road.arterial": "Road › Arterial",
+    "road.local": "Road › Local",
+    "transit": "Transit — All",
+    "transit.line": "Transit › Line",
+    "transit.station": "Transit › Station — All",
+    "transit.station.airport": "Transit › Station › Airport",
+    "transit.station.bus": "Transit › Station › Bus",
+    "transit.station.rail": "Transit › Station › Rail",
+    "water": "Water"
+  },
+  "elements": {
+    "all": "All elements", "geometry": "Geometry — All", "geometry.fill": "Geometry › Fill", "geometry.stroke": "Geometry › Stroke / outline",
+    "labels": "Labels — All", "labels.text": "Labels › Text — All", "labels.text.fill": "Labels › Text › Fill", "labels.text.stroke": "Labels › Text › Stroke / outline", "labels.icon": "Labels › Icon"
+  },
+  "stylers": {
+    "visibility": {"label":"Visibility", "type":"select", "options":{"on":"On", "simplified":"Simplified", "off":"Off"}},
+    "color": {"label":"Color", "type":"color"},
+    "hue": {"label":"Hue", "type":"color"},
+    "saturation": {"label":"Saturation", "type":"number", "min":-100, "max":100, "step":"any"},
+    "lightness": {"label":"Lightness", "type":"number", "min":-100, "max":100, "step":"any"},
+    "gamma": {"label":"Gamma", "type":"number", "min":0.01, "max":10, "step":"any"},
+    "weight": {"label":"Weight (px)", "type":"number", "min":0, "step":1},
+    "invert_lightness": {"label":"Invert lightness", "type":"select", "options":{"true":"Yes", "false":"No"}}
+  }
+}
