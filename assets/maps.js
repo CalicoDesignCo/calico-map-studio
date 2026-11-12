@@ -24,15 +24,18 @@
     function validateRules(raw) {
         const rules = typeof raw === 'string' ? JSON.parse(raw) : raw;
         if (!Array.isArray(rules) || rules.length > 200 || JSON.stringify(rules).length > 60000) throw new Error('Use an embedded style array up to 200 rules and 60 KB.');
-        rules.forEach(rule => {
+        const normalized = [];
+        rules.forEach((rule, ruleIndex) => {
             if (!rule || typeof rule !== 'object' || Array.isArray(rule) || !Array.isArray(rule.stylers) || !rule.stylers.length ||
                 typeof (rule.featureType ?? 'all') !== 'string' || !Object.hasOwn(schema.features, rule.featureType ?? 'all') ||
                 typeof (rule.elementType ?? 'all') !== 'string' || !Object.hasOwn(schema.elements, rule.elementType ?? 'all') ||
                 Object.keys(rule).some(key => !['featureType', 'elementType', 'stylers'].includes(key))) throw new Error('Choose a supported feature, element and at least one style property.');
-            rule.stylers.forEach(styler => {
+            const normalizedStylers = rule.stylers.map(styler => {
                 if (!styler || typeof styler !== 'object' || Array.isArray(styler) || Object.keys(styler).length !== 1) throw new Error('Each styler must contain one property.');
-                const [name, value] = Object.entries(styler)[0];
-                const spec = schema.stylers[name];
+                const [name, original] = Object.entries(styler)[0];
+                let value = original;
+                const spec = Object.hasOwn(schema.stylers, name) ? schema.stylers[name] : null;
+                if (spec && spec.type === 'number' && typeof value === 'string' && /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(value.trim())) value = Number(value.trim());
                 let valid = false;
                 if (spec) {
                     if (spec.type === 'color') valid = typeof value === 'string' && /^#[a-f\d]{6}$/i.test(value);
@@ -40,10 +43,17 @@
                     else if (spec.type === 'select') valid = typeof value === 'string' && Object.hasOwn(spec.options, value);
                     else valid = typeof value === 'number' && Number.isFinite(value) && value >= spec.min && (spec.max === undefined || value <= spec.max);
                 }
-                if (!valid) throw new Error('A style property is unsupported or outside its valid range.');
+                if (!valid) {
+                    const label = 'Rule ' + (ruleIndex + 1) + ', ' + name.slice(0, 60) + ': ';
+                    if (!spec) throw new Error(label + 'unsupported style property.');
+                    const hint = spec.type === 'number' ? ('use a number ' + (spec.max === undefined ? 'at least ' + spec.min : 'from ' + spec.min + ' to ' + spec.max)) : (spec.type === 'color' ? 'use a six-digit hex color such as #123456' : (name === 'invert_lightness' ? 'use true or false without quotes' : 'use on, off or simplified'));
+                    throw new Error(label + JSON.stringify(original).slice(0, 80) + ' is invalid; ' + hint + '.');
+                }
+                return { [name]: value };
             });
+            normalized.push({ ...rule, stylers: normalizedStylers });
         });
-        return rules;
+        return normalized;
     }
 
     function styles(config) {

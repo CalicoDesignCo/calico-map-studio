@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Calico Map Studio
  * Description: Style Google Maps roads, water, land, labels and more. Reuse maps with Elementor or a shortcode.
- * Version: 0.4.0
+ * Version: 0.4.1
  * Requires at least: 6.2
  * Requires PHP: 7.4
  * Plugin URI: https://github.com/CalicoDesignCo/calico-map-studio
@@ -14,7 +14,7 @@
 if (!defined('ABSPATH')) { exit; }
 
 final class Calico_Map_Studio {
-    const VERSION = '0.4.0';
+    const VERSION = '0.4.1';
     const TYPE = 'calico_styled_map';
     const META = '_calico_map_config';
 
@@ -101,17 +101,18 @@ final class Calico_Map_Studio {
         if (strlen($raw) > 60000 || substr($raw, 0, 1) !== '[' || !is_array($decoded) || count($decoded) > 200) {
             $error = 'Use an embedded Google Maps style array, up to 200 rules and 60 KB.'; return array();
         }
-        foreach ($decoded as $rule) {
+        foreach ($decoded as $rule_index => $rule) {
             if (!is_array($rule) || empty($rule['stylers']) || !is_array($rule['stylers']) ||
                 !is_string($rule['featureType'] ?? 'all') || !isset($schema['features'][$rule['featureType'] ?? 'all']) ||
                 !is_string($rule['elementType'] ?? 'all') || !isset($schema['elements'][$rule['elementType'] ?? 'all']) ||
                 array_diff(array_keys($rule), array('featureType', 'elementType', 'stylers'))) {
                 $error = 'Each rule needs a supported feature, element and nonempty stylers array.'; return array();
             }
-            foreach ($rule['stylers'] as $styler) {
+            foreach ($rule['stylers'] as $styler_index => $styler) {
                 if (!is_array($styler) || count($styler) !== 1) { $error = 'Each styler must contain one property.'; return array(); }
                 $name = key($styler); $value = current($styler);
                 $spec = $schema['stylers'][$name] ?? null;
+                if ($spec && $spec['type'] === 'number' && is_string($value) && preg_match('/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/iD', trim($value))) { $value = (float) trim($value); }
                 $valid = false;
                 if ($spec) {
                     if ($spec['type'] === 'color') { $valid = is_string($value) && preg_match('/^#[a-fA-F0-9]{6}$/', $value); }
@@ -119,7 +120,16 @@ final class Calico_Map_Studio {
                     elseif ($spec['type'] === 'select') { $valid = is_string($value) && isset($spec['options'][$value]); }
                     else { $valid = (is_int($value) || is_float($value)) && is_finite((float) $value) && $value >= $spec['min'] && (!isset($spec['max']) || $value <= $spec['max']); }
                 }
-                if (!$valid) { $error = 'A style property is unsupported or outside its valid range.'; return array(); }
+                if (!$valid) {
+                    $label = 'Rule ' . ($rule_index + 1) . ', ' . substr((string) $name, 0, 60) . ': ';
+                    if (!$spec) { $error = $label . 'unsupported style property.'; }
+                    else {
+                        $hint = $spec['type'] === 'number' ? ('use a number ' . (isset($spec['max']) ? 'from ' . $spec['min'] . ' to ' . $spec['max'] : 'at least ' . $spec['min'])) : ($spec['type'] === 'color' ? 'use a six-digit hex color such as #123456' : ($name === 'invert_lightness' ? 'use true or false without quotes' : 'use on, off or simplified'));
+                        $error = $label . substr(wp_json_encode(current($styler)), 0, 80) . ' is invalid; ' . $hint . '.';
+                    }
+                    return array();
+                }
+                $decoded[$rule_index]['stylers'][$styler_index][$name] = $value;
             }
         }
         return $decoded;
