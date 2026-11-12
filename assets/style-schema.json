@@ -45,7 +45,7 @@
     "saturation": {"label":"Saturation", "type":"number", "min":-100, "max":100, "step":"any"},
     "lightness": {"label":"Lightness", "type":"number", "min":-100, "max":100, "step":"any"},
     "gamma": {"label":"Gamma", "type":"number", "min":0.01, "max":10, "step":"any"},
-    "weight": {"label":"Weight (px)", "type":"number", "min":0, "step":1},
+    "weight": {"label":"Weight (px)", "type":"number", "min":0, "step":"any"},
     "invert_lightness": {"label":"Invert lightness", "type":"select", "options":{"true":"Yes", "false":"No"}}
   }
 }

@@ -38,7 +38,7 @@
                     if (spec.type === 'color') valid = typeof value === 'string' && /^#[a-f\d]{6}$/i.test(value);
                     else if (name === 'invert_lightness') valid = typeof value === 'boolean';
                     else if (spec.type === 'select') valid = typeof value === 'string' && Object.hasOwn(spec.options, value);
-                    else valid = typeof value === 'number' && Number.isFinite(value) && value >= spec.min && (spec.max === undefined || value <= spec.max) && (name !== 'weight' || Number.isInteger(value));
+                    else valid = typeof value === 'number' && Number.isFinite(value) && value >= spec.min && (spec.max === undefined || value <= spec.max);
                 }
                 if (!valid) throw new Error('A style property is unsupported or outside its valid range.');
             });

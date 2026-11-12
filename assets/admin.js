@@ -6,6 +6,9 @@
     const canvas = document.getElementById('cms-preview');
     const status = document.getElementById('cms-status');
     const fields = Array.from(editor.querySelectorAll('[data-cms-field]'));
+    const codeField = document.getElementById('cms-json');
+    const codeStatus = document.getElementById('cms-code-status');
+    const codePresets = window.CalicoMapStylePresets || {};
     let active = false;
     let timer;
     let revision = 0;
@@ -55,16 +58,51 @@
         event.target.textContent = 'Refresh preview';
     });
     document.getElementById('cms-apply-preset').addEventListener('click', () => {
-        const palette = studio.presets[document.getElementById('cms-preset').value];
+        const choice = document.getElementById('cms-preset').value;
+        if (Object.hasOwn(codePresets, choice)) {
+            codeField.value = JSON.stringify(studio.validateRules(codePresets[choice].styles), null, 2);
+            codeField.dispatchEvent(new Event('input', { bubbles: true }));
+            codeStatus.textContent = codePresets[choice].name + ' loaded. Update the map to save it, or choose Edit code visually to customize it.';
+            update();
+            return;
+        }
+        const palette = studio.presets[choice];
         if (!palette) return;
+        codeField.value = '';
         studio.colorKeys.forEach((key, index) => {
             document.getElementById('cms-' + key).value = palette[index];
             editor.querySelector('[data-cms-picker="' + key + '"]').value = palette[index] || '#ffffff';
         });
+        codeField.dispatchEvent(new Event('input', { bubbles: true }));
+        codeStatus.textContent = 'Palette preset applied. Update the map to save it.';
         update();
     });
-    document.getElementById('cms-export').addEventListener('click', () => {
-        document.getElementById('cms-json').value = JSON.stringify(studio.styles(Object.assign(config(), { json: '' })), null, 2);
+    document.getElementById('cms-code-apply').addEventListener('click', () => {
+        try {
+            if (!codeField.value.trim()) throw new Error('Paste a Google Maps JSON style array first.');
+            codeField.value = JSON.stringify(studio.validateRules(codeField.value), null, 2);
+            codeField.dispatchEvent(new Event('input', { bubbles: true }));
+            codeStatus.textContent = 'Style code applied. Update the map to save it.';
+            update();
+        } catch (error) { codeStatus.textContent = error.message; codeField.focus(); }
+    });
+    document.getElementById('cms-export').addEventListener('click', async () => {
+        try {
+            const json = JSON.stringify(studio.styles(config()), null, 2);
+            const output = document.getElementById('cms-code-output');
+            output.value = json;
+            document.getElementById('cms-code-output-wrap').hidden = false;
+            output.focus(); output.select();
+            if (navigator.clipboard && window.isSecureContext) {
+                try { await navigator.clipboard.writeText(json); codeStatus.textContent = 'Current style code copied. Paste it into another compatible Google Maps editor or website.'; }
+                catch (error) { codeStatus.textContent = 'Current style code is selected below. Press Ctrl+C (or Command+C) to copy it.'; }
+            } else codeStatus.textContent = 'Current style code is selected below. Press Ctrl+C (or Command+C) to copy it.';
+        } catch (error) { codeStatus.textContent = error.message; }
+    });
+    document.getElementById('cms-code-clear').addEventListener('click', () => {
+        codeField.value = '';
+        codeField.dispatchEvent(new Event('input', { bubbles: true }));
+        codeStatus.textContent = 'Code cleared. The palette and detailed rules are active again. Update the map to save.';
         update();
     });
     const rulesField = document.getElementById('cms-rules');
@@ -163,6 +201,24 @@
         document.getElementById('cms-add-rule').disabled = rules.length >= 200;
         if (focusIndex >= 0) ruleList.children[focusIndex]?.querySelector('select')?.focus();
     }
+    document.getElementById('cms-code-visual').addEventListener('click', () => {
+        try {
+            if (!codeField.value.trim()) throw new Error('Paste style code or load a code preset first.');
+            const imported = studio.validateRules(codeField.value);
+            // Reset only visual map styling so the imported style starts from Google's baseline.
+            studio.colorKeys.forEach(key => {
+                document.getElementById('cms-' + key).value = '';
+                editor.querySelector('[data-cms-picker="' + key + '"]').value = '#ffffff';
+            });
+            fields.forEach(field => { if (field.type === 'checkbox' && field.dataset.cmsField.startsWith('hide_')) field.checked = false; });
+            rules = JSON.parse(JSON.stringify(imported));
+            codeField.value = '';
+            commitRules(); drawRules();
+            codeField.dispatchEvent(new Event('input', { bubbles: true }));
+            codeStatus.textContent = 'Code converted to detailed rules. Your pin, location and map controls were kept. Use the guided picker or edit the rules, then Update to save.';
+            update();
+        } catch (error) { codeStatus.textContent = error.message; codeField.focus(); }
+    });
     document.getElementById('cms-add-rule').addEventListener('click', () => {
         rules.push({ featureType: 'all', elementType: 'all', stylers: [] });
         drawRules(rules.length - 1);
