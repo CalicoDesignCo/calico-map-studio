@@ -2,14 +2,14 @@
 Contributors: calicodesign
 Requires at least: 6.2
 Requires PHP: 7.4
-Stable tag: 0.3.1
+Stable tag: 0.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 Style real Google Maps features and reuse your maps in Elementor or with a shortcode.
 
 == Description ==
-Choose separate colors for land, water, parks, roads, highways, man-made land, label text and outlines, administrative labels, transit and your location pin. Start with Google default, Soft silver, Midnight, Warm neutral or Coastal presets. Hide labels, points of interest, roads, administrative labels and transit independently.
+Choose separate colors for land, water, parks, roads, highways, man-made land, label text and outlines, administrative labels, transit and your location pin. Start with Google default, Soft silver, Midnight, Warm neutral, Coastal or Ultra Light with Labels presets. Hide labels, points of interest, roads, administrative labels and transit independently.
 
 Save multiple named maps. Select a published map in the Calico Styled Map Elementor widget, or use [calico_map id="123"]. Elementor is optional. The widget supports responsive map heights. Shortcodes accept an optional numeric height in pixels: [calico_map id="123" height="500"].
 
@@ -33,7 +33,7 @@ Only administrators can manage maps and the API key. Only published maps render 
 
 == Frequently Asked Questions ==
 = Why are my colors not changing? =
-Clear advanced JSON to use the palette. Advanced JSON overrides palette and feature visibility controls. Save the map and clear page caches after changing a published map.
+Use Clear code to return to the existing palette, or Edit code visually to convert pasted JSON into editable detailed rules. Imported code overrides palette and feature visibility controls. Save the map and clear page caches after changing a published map.
 
 = Why is the map unavailable? =
 Check the saved key, API activation, billing, referrer restrictions and browser console. The location pin opens Google Maps; no text link is displayed below the map.
@@ -49,9 +49,20 @@ Detailed rules apply after the quick palette and feature visibility controls. La
 == Guided feature picker ==
 Load the admin preview, turn on Pick a map feature, and click the map. The click marks a location; you choose the feature category and element manually. Changing the target highlights matching features in magenta for three seconds. You can repeat or clear the highlight, then use Open styling controls to edit the last matching detailed rule or create a new one.
 
-This is category selection, not automatic feature identification or editing an individual road. Highlights affect matching features across the preview. Some map feature / element pairs may not visibly respond. Highlight rules and the clicked-location marker are temporary: they are never saved, exported or displayed on the public map. Escape exits picker mode. Advanced imported JSON must be cleared before editing via visual rules.
+This is category selection, not automatic feature identification or editing an individual road. Highlights affect matching features across the preview. Some map feature / element pairs may not visibly respond. Highlight rules and the clicked-location marker are temporary: they are never saved, exported or displayed on the public map. Escape exits picker mode. Use Edit code visually to convert imported JSON before editing through the visual rules or guided picker.
+
+== Universal style code ==
+The visible Paste or share a map style panel accepts standard embedded Google Maps JSON style arrays from Snazzy Maps and other compatible editors. Paste code and choose Apply style code, or select Ultra Light with Labels from the preset list. Decimal line weights such as 0.2 and 1.2 are retained.
+
+Copy current style code exports the active style as a reusable Google Maps array without location, API key or temporary highlights. A selected text area is provided if clipboard access is unavailable. Edit code visually converts pasted JSON into detailed rules and resets only the styling palette and feature visibility, keeping location, pin and interaction controls. Clear code restores the current visual settings. JavaScript declarations and Cloud styling objects are not supported.
+
+Browse compatible styles: https://snazzymaps.com/explore
+Bundled style: Ultra Light with Labels by Anonymous, https://snazzymaps.com/style/151/ultra-light-with-labels (CC0-1.0). See THIRD-PARTY-NOTICES.md.
 
 == Changelog ==
+= 0.4.0 =
+Added universal paste/apply/copy style code controls, conversion to visual rules, the original Ultra Light with Labels preset, a Snazzy Maps browse link and decimal line-weight support.
+
 = 0.3.1 =
 First public GitHub release. Adds native WordPress update checks for stable GitHub releases with a version-pinned installable ZIP. Preserves all existing maps and settings.
 

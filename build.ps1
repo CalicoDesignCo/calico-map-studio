@@ -6,7 +6,7 @@ if (-not $version) { throw 'Plugin version missing' }
 $buildRoot = Join-Path ([IO.Path]::GetTempPath()) ('calico-map-studio-build-' + [guid]::NewGuid().ToString('N'))
 $package = Join-Path $buildRoot $slug
 New-Item -ItemType Directory -Path $package -Force | Out-Null
-foreach ($name in @("$slug.php", 'readme.txt', 'LICENSE', 'assets', 'includes')) {
+foreach ($name in @("$slug.php", 'readme.txt', 'LICENSE', 'THIRD-PARTY-NOTICES.md', 'assets', 'includes')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination $package -Recurse
 }
 $output = Join-Path $PSScriptRoot "$slug-v$version.zip"

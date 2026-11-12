@@ -6,12 +6,13 @@ Style the actual features of a Google Map from WordPress: roads, water, landscap
 
 ## Features
 
-- Five quick palette presets and individual feature colors.
+- Five quick palette presets, individual feature colors, and the original Ultra Light with Labels style from Snazzy Maps.
 - Detailed rules for 33 feature categories, 9 element targets and 8 styling properties.
 - Separate fill, outline, text and icon targets; feature visibility, hue, saturation, lightness, gamma and weight.
 - A guided preview picker: click a spot, choose its category, briefly highlight matching features, then open the matching rule.
 - Multiple saved maps, a custom location pin, zoom/fullscreen controls and responsive Elementor heights.
-- Embedded Google Maps JSON import and visual-style export.
+- A visible paste/apply/copy code panel for standard Google Maps style arrays, including decimal line weights.
+- Conversion from pasted code to editable visual rules without changing pin or map controls.
 - Native WordPress updates from stable GitHub releases.
 
 ## Install
@@ -30,7 +31,15 @@ Requires WordPress 6.2+ and PHP 7.4+. Elementor is optional. Google Maps is an e
 
 Load the admin preview, select **Pick a map feature**, then click a spot. Choose the feature category and element manually. A magenta highlight shows matching features for three seconds. **Open styling controls** selects the last exact matching rule or creates a new one. Press Escape to exit picker mode.
 
-Google's click events do not automatically identify arbitrary road, water or label elements. Styling applies to a category across the map, not to one individual road. Temporary highlights and the clicked-location marker are never saved or exported. Advanced imported JSON overrides the visual controls and must be cleared before editing them.
+Google's click events do not automatically identify arbitrary road, water or label elements. Styling applies to a category across the map, not to one individual road. Temporary highlights and the clicked-location marker are never saved or exported. Pasted JSON overrides the visual controls. Choose **Edit code visually** to convert it into detailed rules and enable the picker.
+
+## Paste or share style code
+
+Browse [Snazzy Maps styles](https://snazzymaps.com/explore), open a style and copy its **JavaScript Style Array**. Paste that JSON into **Paste or share a map style → Google Maps style code**, then choose **Apply style code** and save the map.
+
+**Copy current style code** exports the active style as a standard JSON array for another map or compatible website. It includes no API key, location or temporary highlights. If clipboard access is unavailable, the code is selected in a text area for manual copying. **Edit code visually** converts imported rules while preserving their order and decimal values. **Clear code** returns to the existing visual settings. Paste the JSON array only, without JavaScript variable declarations; Google Cloud style objects use a different format.
+
+The bundled [Ultra Light with Labels](https://snazzymaps.com/style/151/ultra-light-with-labels) style is by Anonymous and is offered through Snazzy Maps under CC0. [Standalone style JSON](ultra-light-with-labels.json) · [Third-party notices](THIRD-PARTY-NOTICES.md).
 
 ## Updates
 

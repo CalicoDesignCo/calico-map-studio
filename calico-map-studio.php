@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Calico Map Studio
  * Description: Style Google Maps roads, water, land, labels and more. Reuse maps with Elementor or a shortcode.
- * Version: 0.3.1
+ * Version: 0.4.0
  * Requires at least: 6.2
  * Requires PHP: 7.4
  * Plugin URI: https://github.com/CalicoDesignCo/calico-map-studio
@@ -14,7 +14,7 @@
 if (!defined('ABSPATH')) { exit; }
 
 final class Calico_Map_Studio {
-    const VERSION = '0.3.1';
+    const VERSION = '0.4.0';
     const TYPE = 'calico_styled_map';
     const META = '_calico_map_config';
 
@@ -89,6 +89,12 @@ final class Calico_Map_Studio {
         return $schema;
     }
 
+    public static function presets() {
+        static $presets;
+        if (!$presets) { $presets = json_decode(file_get_contents(__DIR__ . '/assets/style-presets.json'), true); }
+        return $presets;
+    }
+
     public static function validate_rules($raw, &$error) {
         $schema = self::schema();
         $decoded = json_decode($raw, true);
@@ -111,7 +117,7 @@ final class Calico_Map_Studio {
                     if ($spec['type'] === 'color') { $valid = is_string($value) && preg_match('/^#[a-fA-F0-9]{6}$/', $value); }
                     elseif ($name === 'invert_lightness') { $valid = is_bool($value); }
                     elseif ($spec['type'] === 'select') { $valid = is_string($value) && isset($spec['options'][$value]); }
-                    else { $valid = (is_int($value) || is_float($value)) && is_finite((float) $value) && $value >= $spec['min'] && (!isset($spec['max']) || $value <= $spec['max']) && ($name !== 'weight' || floor($value) == $value); }
+                    else { $valid = (is_int($value) || is_float($value)) && is_finite((float) $value) && $value >= $spec['min'] && (!isset($spec['max']) || $value <= $spec['max']); }
                 }
                 if (!$valid) { $error = 'A style property is unsupported or outside its valid range.'; return array(); }
             }
@@ -166,6 +172,7 @@ final class Calico_Map_Studio {
         wp_enqueue_script('calico-map-studio');
         wp_enqueue_script('calico-map-picker', plugins_url('assets/admin-picker.js', __FILE__), array('calico-map-studio'), self::VERSION, true);
         wp_enqueue_script('calico-map-admin', plugins_url('assets/admin.js', __FILE__), array('calico-map-studio', 'calico-map-picker'), self::VERSION, true);
+        wp_localize_script('calico-map-admin', 'CalicoMapStylePresets', self::presets());
     }
 
     public static function boxes() {
@@ -192,7 +199,16 @@ final class Calico_Map_Studio {
         self::field('zoom', 'Zoom', $c, 'number', 'min="1" max="20" step="1"');
         self::field('height', 'Default height (px)', $c, 'number', 'min="180" max="1200" step="1"');
         ?></div><p class="description">In Google Maps, right-click a location to copy its coordinates. Paste latitude and longitude separately here.</p>
-        <h3>Color palette</h3><p><label for="cms-preset">Start with a preset </label><select id="cms-preset"><option value="">Choose…</option><option value="standard">Google default</option><option value="silver">Soft silver</option><option value="night">Midnight</option><option value="warm">Warm neutral</option><option value="coastal">Coastal</option></select> <button type="button" class="button" id="cms-apply-preset">Apply preset</button></p>
+        <section class="cms-style-code" id="cms-style-code" aria-labelledby="cms-code-title"><h3 id="cms-code-title">Paste or share a map style</h3>
+        <p>Paste a Google Maps JSON style array from Snazzy Maps or another compatible editor. Code overrides the palette and detailed rules. It does not change your location pin or map controls.</p>
+        <p><a class="button" href="https://snazzymaps.com/explore" target="_blank" rel="noopener noreferrer">Browse styles on Snazzy Maps ↗</a> <span class="description">Open a style and copy its JavaScript Style Array. Paste only the JSON array, without JavaScript variable declarations.</span></p>
+        <label for="cms-json"><strong>Google Maps style code (JSON)</strong></label><textarea id="cms-json" data-cms-field="json" name="cms[json]" rows="8" spellcheck="false" placeholder='[{"featureType":"water","stylers":[{"color":"#e9e9e9"}]}]'><?php echo esc_textarea($c['json']); ?></textarea>
+        <p class="cms-code-actions"><button class="button button-primary" type="button" id="cms-code-apply">Apply style code</button> <button class="button" type="button" id="cms-export">Copy current style code</button> <button class="button" type="button" id="cms-code-visual">Edit code visually</button> <button class="button" type="button" id="cms-code-clear">Clear code</button></p>
+        <p class="description">Copy exports a standard style array for reuse on another map or compatible website. Edit code visually replaces the quick palette and detailed rules with the pasted style, enabling the guided picker.</p>
+        <label id="cms-code-output-wrap" for="cms-code-output" hidden><strong>Current style code to share</strong><textarea id="cms-code-output" rows="6" readonly spellcheck="false"></textarea></label>
+        <p id="cms-code-status" role="status" aria-live="polite"></p></section>
+        <h3>Color palette &amp; presets</h3><p><label for="cms-preset">Start with a preset </label><select id="cms-preset"><option value="">Choose…</option><option value="standard">Google default</option><option value="silver">Soft silver</option><option value="night">Midnight</option><option value="warm">Warm neutral</option><option value="coastal">Coastal</option><option value="ultra_light_labels">Ultra Light with Labels (Snazzy Maps)</option></select> <button type="button" class="button" id="cms-apply-preset">Apply preset</button></p>
+        <p class="description">Ultra Light with Labels is by Anonymous, via <a href="https://snazzymaps.com/style/151/ultra-light-with-labels" target="_blank" rel="noopener noreferrer">Snazzy Maps</a> (CC0).</p>
         <p class="description">Leave a color empty to keep Google’s default. Presets replace colors; visibility controls are kept.</p>
         <div class="cms-grid cms-palette"><?php foreach (self::colors() as $key => $label) { ?>
         <label class="cms-field" for="cms-<?php echo esc_attr($key); ?>"><span><?php echo esc_html($label); ?></span><span class="cms-color-pair"><input aria-label="<?php echo esc_attr($label . ' picker'); ?>" type="color" data-cms-picker="<?php echo esc_attr($key); ?>" value="<?php echo esc_attr($c[$key] ?: '#ffffff'); ?>"><input id="cms-<?php echo esc_attr($key); ?>" data-cms-field="<?php echo esc_attr($key); ?>" name="cms[<?php echo esc_attr($key); ?>]" value="<?php echo esc_attr($c[$key]); ?>" placeholder="Default" pattern="#[a-fA-F0-9]{6}" maxlength="7" spellcheck="false"></span></label>
@@ -202,13 +218,10 @@ final class Calico_Map_Studio {
         <?php } ?></div>
         <section class="cms-rule-section"><h3>Detailed feature rules</h3>
         <p>Target a feature and an element, then choose its styling. Rules apply after the quick palette, from top to bottom; later matching rules take precedence. Blank properties inherit the existing style.</p>
-        <p class="description">Some feature / element combinations have no visible effect. Administrative styling controls labels, not geographic borders. Weight is a whole number in pixels. Hue and brightness adjustments depend on Google’s base style.</p>
+        <p class="description">Some feature / element combinations have no visible effect. Administrative styling controls labels, not geographic borders. Weight accepts nonnegative decimal pixel values. Hue and brightness adjustments depend on Google’s base style.</p>
         <input type="hidden" id="cms-rules" data-cms-field="rules" name="cms[rules]" value="<?php echo esc_attr($c['rules']); ?>">
         <div id="cms-rule-list"></div><p><button type="button" class="button" id="cms-add-rule">Add feature rule</button></p>
         <p id="cms-rules-note" role="status"></p></section>
-        <details class="cms-advanced"><summary>Advanced: import / export style JSON</summary><p>Optional embedded Google Maps style array (including compatible Snazzy Maps styles). This overrides the palette, visibility and detailed rules, but not your pin or map controls. Clear it to use the visual controls again.</p>
-        <label for="cms-json">Style JSON</label><textarea id="cms-json" data-cms-field="json" name="cms[json]" rows="10" spellcheck="false"><?php echo esc_textarea($c['json']); ?></textarea>
-        <button class="button" type="button" id="cms-export">Export visual style to JSON</button><p class="description">Export replaces the text above with the current palette and detailed rules.</p></details>
         </div><div class="cms-preview-panel"><h3>Live preview</h3>
         <p><button class="button button-primary" type="button" id="cms-preview-load">Load Google Maps preview</button></p>
         <p class="description">Loads Google Maps using your saved API key. Palette changes update the loaded preview immediately.</p>
