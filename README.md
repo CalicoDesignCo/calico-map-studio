@@ -29,7 +29,7 @@ Requires WordPress 6.2+ and PHP 7.4+. Elementor is optional. Google Maps is an e
 
 ## Addresses and multiple locations
 
-Each map supports a primary location and up to 49 additional labeled addresses. Enter a full address, click **Find address on map**, check the preview and save. **Add location** creates another address/pin. **Automatically fit all locations** frames all saved locations; turn it off to use the primary coordinates and zoom. The same locations render in the Elementor widget and shortcode.
+Each map supports a primary location and up to 49 additional labeled addresses. Enter a full address, then load the preview or save the map to locate it automatically. **Find address on map** also checks an address on demand. Address errors display a notice and focus the relevant address or coordinate field; style errors focus the style controls. **Add location** creates another address/pin. **Automatically fit all locations** frames all saved locations; turn it off to use the primary coordinates and zoom. The same locations render in the Elementor widget and shortcode.
 
 Enable **Geocoding API** in the same Google Cloud project as Maps JavaScript API and allow both in the browser key’s API restrictions. Keep website restrictions enabled. Lookups run only on request in the editor; public maps use saved coordinates. Manual coordinates remain available without Geocoding API. Address changes clear old coordinates; unresolved or ambiguous matches must be corrected before saving. Existing single-pin maps keep their location and styles. Pins open their coordinates in Google Maps. No autocomplete or clustering is included.
 

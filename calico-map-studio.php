@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Calico Map Studio
  * Description: Style Google Maps roads, water, land, labels and more. Reuse maps with Elementor or a shortcode.
- * Version: 0.5.0
+ * Version: 0.5.1
  * Requires at least: 6.2
  * Requires PHP: 7.4
  * Plugin URI: https://github.com/CalicoDesignCo/calico-map-studio
@@ -14,7 +14,7 @@
 if (!defined('ABSPATH')) { exit; }
 
 final class Calico_Map_Studio {
-    const VERSION = '0.5.0';
+    const VERSION = '0.5.1';
     const TYPE = 'calico_styled_map';
     const META = '_calico_map_config';
 
@@ -235,7 +235,7 @@ final class Calico_Map_Studio {
         ?></div><p><button class="button" type="button" data-cms-find>Find address on map</button></p><p data-cms-location-status role="status" aria-live="polite"></p></div><div class="cms-grid"><?php
         self::field('zoom', 'Zoom', $c, 'number', 'min="1" max="20" step="1"');
         self::field('height', 'Default height (px)', $c, 'number', 'min="180" max="1200" step="1"');
-        ?></div><p class="description">Enter a full street address, then choose Find address on map. Check the pin in the preview before saving. Coordinates can also be entered manually. Address lookup requires Google’s Geocoding API.</p>
+        ?></div><p class="description">Enter a full street address, then load the preview or Update to locate it automatically. Find address on map also checks an address on demand. Coordinates can be entered manually. Address lookup requires Google’s Geocoding API.</p>
         <h3>Additional locations</h3><p>Add up to 49 more locations. Each pin uses the map’s pin color and opens its coordinates in Google Maps.</p>
         <div id="cms-location-list"><?php foreach ($c['locations'] as $index => $row) { self::location_row($row, $index); } ?></div>
         <p><button class="button" type="button" id="cms-add-location">Add location</button></p>
