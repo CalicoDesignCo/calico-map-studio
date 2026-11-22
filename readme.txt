@@ -2,7 +2,7 @@
 Contributors: calicodesign
 Requires at least: 6.2
 Requires PHP: 7.4
-Stable tag: 0.5.0
+Stable tag: 0.5.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -60,6 +60,11 @@ Browse compatible styles: https://snazzymaps.com/explore
 Bundled style: Ultra Light with Labels by Anonymous, https://snazzymaps.com/style/151/ultra-light-with-labels (CC0-1.0). See THIRD-PARTY-NOTICES.md.
 
 == Changelog ==
+= 0.5.1 =
+* Resolve entered addresses automatically when loading the preview or saving the map.
+* Focus the address or coordinate field for location errors instead of the style code box.
+* Show a visible error notice and preserve the original Update or Save action after lookup.
+
 = 0.5.0 =
 * Add street address lookup and up to 50 labeled location pins per map.
 * Automatically fit all locations, with an option to keep manual framing.

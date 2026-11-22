@@ -15,7 +15,34 @@
     let picker;
     const locationList = document.getElementById('cms-location-list');
     let nextLocation = locationList.querySelectorAll('.cms-location-row').length;
-    let lookups = 0;
+    const pendingLookups = new Map();
+    const form = document.getElementById('post');
+    const errorNotice = document.createElement('div');
+    errorNotice.id = 'cms-editor-error';
+    errorNotice.className = 'notice notice-error inline';
+    errorNotice.setAttribute('role', 'alert');
+    errorNotice.hidden = true;
+    editor.prepend(errorNotice);
+    function clearError() {
+        errorNotice.hidden = true;
+        editor.querySelectorAll('[aria-invalid="true"]').forEach(field => field.removeAttribute('aria-invalid'));
+    }
+    function showError(error) {
+        status.textContent = error.message;
+        errorNotice.textContent = error.message;
+        errorNotice.hidden = false;
+        const target = error.field || codeField;
+        target.setAttribute('aria-invalid', 'true');
+        target.focus();
+        target.scrollIntoView({ block: 'center' });
+    }
+    function checkStyles() {
+        try { studio.styles(config()); }
+        catch (error) {
+            error.field = codeField.value.trim() ? codeField : (editor.querySelector('#cms-rule-list input:not([type="hidden"]), #cms-rule-list select') || codeField);
+            throw error;
+        }
+    }
     function config() {
         const result = {};
         fields.forEach(field => { result[field.dataset.cmsField] = field.type === 'checkbox' ? field.checked : field.value; });
@@ -40,30 +67,66 @@
         locationList.appendChild(fragment);
         locationList.lastElementChild.querySelector('input').focus();
     });
-    editor.addEventListener('click', async event => {
-        const remove = event.target.closest('[data-cms-remove-location]');
-        if (remove) { remove.closest('.cms-location-row').remove(); await update(); return; }
-        const button = event.target.closest('[data-cms-find]');
-        if (!button) return;
-        const row = button.closest('.cms-location-row, #cms-primary-location');
+    function lookupAddress(row) {
+        if (pendingLookups.has(row)) return pendingLookups.get(row);
         const values = locationFields(row);
+        const button = row.querySelector('[data-cms-find]');
         const message = row.querySelector('[data-cms-location-status]');
         const address = values.address.value;
         const revision = row.dataset.revision || '0';
-        button.disabled = true; lookups++;
+        button.disabled = true;
         message.textContent = 'Finding address…';
-        try {
+        const promise = (async () => { try {
             const matches = await studio.geocode(address, editor.dataset.apiKey);
-            if (!row.isConnected || values.address.value !== address || (row.dataset.revision || '0') !== revision) return;
-            if (matches.length > 1) { message.textContent = 'Several addresses matched. Add more detail, such as city and postal code, and try again.'; return; }
-            if (matches[0].partial) { message.textContent = 'Only a partial address matched. Add more detail or enter confirmed coordinates manually.'; return; }
+            if (!row.isConnected || values.address.value !== address || (row.dataset.revision || '0') !== revision) throw new Error('Location changed during lookup. Try again with the current address.');
+            if (matches.length > 1) throw new Error('Several addresses matched. Add more detail, such as city and postal code, and try again.');
+            if (matches[0].partial) throw new Error('Only a partial address matched. Add more detail or enter confirmed coordinates manually.');
             values.lat.value = matches[0].lat;
             values.lng.value = matches[0].lng;
             message.textContent = 'Found: ' + matches[0].address + '. Check the pin in the preview, then save the map.';
+        } catch (error) {
+            if (row.isConnected) message.textContent = error.message;
+            error.field = row.isConnected ? values.address : document.getElementById('cms-add-location');
+            throw error;
+        } finally { button.disabled = false; pendingLookups.delete(row); } })();
+        pendingLookups.set(row, promise);
+        return promise;
+    }
+    async function ensureLocations() {
+        const rows = [document.getElementById('cms-primary-location'), ...locationList.querySelectorAll('.cms-location-row')];
+        for (const row of rows) {
+            if (!row.isConnected) continue;
+            const values = locationFields(row);
+            const invalid = ['lat', 'lng'].find(key => values[key].value.trim() === '' || !Number.isFinite(Number(values[key].value)) || Math.abs(Number(values[key].value)) > (key === 'lat' ? 85 : 180));
+            if (!invalid) continue;
+            if (values.address.value.trim()) await lookupAddress(row);
+            else {
+                const error = new Error('Enter a street address or valid coordinates for each location. Remove unused additional locations.');
+                error.field = values[invalid];
+                throw error;
+            }
+        }
+        try { studio.locations(config()); }
+        catch (error) {
+            const row = [document.getElementById('cms-primary-location'), ...locationList.querySelectorAll('.cms-location-row')].find(row => {
+                const values = locationFields(row);
+                return ['lat', 'lng'].some(key => values[key].value.trim() === '' || !Number.isFinite(Number(values[key].value)) || Math.abs(Number(values[key].value)) > (key === 'lat' ? 85 : 180));
+            });
+            error.field = row ? locationFields(row).address : document.getElementById('cms-add-location');
+            throw error;
+        }
+    }
+    editor.addEventListener('click', async event => {
+        const remove = event.target.closest('[data-cms-remove-location]');
+        if (remove) { remove.closest('.cms-location-row').remove(); clearError(); await update(); return; }
+        const button = event.target.closest('[data-cms-find]');
+        if (!button) return;
+        clearError();
+        try {
+            await lookupAddress(button.closest('.cms-location-row, #cms-primary-location'));
             active = true;
             await update();
-        } catch (error) { if (row.isConnected && values.address.value === address) message.textContent = error.message; }
-        finally { button.disabled = false; lookups--; }
+        } catch (error) { showError(error); }
     });
     async function update() {
         const current = ++revision;
@@ -109,12 +172,16 @@
         timer = setTimeout(update, 160);
     });
     document.getElementById('cms-preview-load').addEventListener('click', async event => {
-        active = true;
+        clearError();
         event.target.disabled = true;
         status.textContent = 'Loading Google Maps…';
-        await update();
-        event.target.disabled = false;
-        event.target.textContent = 'Refresh preview';
+        try {
+            checkStyles();
+            await ensureLocations();
+            active = true;
+            await update();
+        } catch (error) { showError(error); }
+        finally { event.target.disabled = false; event.target.textContent = 'Refresh preview'; }
     });
     document.getElementById('cms-apply-preset').addEventListener('click', () => {
         const choice = document.getElementById('cms-preset').value;
@@ -301,11 +368,26 @@
     } });
     update();
     // Do not lose the rest of the map form when JSON has a typo.
-    document.getElementById('post').addEventListener('submit', event => {
+    let saving = false;
+    form.addEventListener('submit', event => {
+        clearError();
+        const block = () => { event.preventDefault(); event.stopImmediatePropagation(); };
+        if (saving) { block(); return; }
         try {
-            if (lookups) throw new Error('Wait for address lookup to finish before saving.');
-            studio.locations(config()); studio.styles(config());
+            checkStyles();
+        } catch (error) { block(); showError(error); return; }
+        try { studio.locations(config()); }
+        catch (error) {
+            block();
+            saving = true;
+            const submitter = event.submitter;
+            status.textContent = 'Resolving addresses before saving…';
+            ensureLocations().then(() => {
+                checkStyles(); studio.locations(config());
+                saving = false;
+                if (submitter) submitter.disabled = false;
+                form.requestSubmit(submitter || undefined);
+            }).catch(showError).finally(() => { saving = false; });
         }
-        catch (error) { event.preventDefault(); status.textContent = error.message; document.getElementById('cms-json').focus(); }
-    });
+    }, true);
 }());
