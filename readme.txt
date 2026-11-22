@@ -2,7 +2,7 @@
 Contributors: calicodesign
 Requires at least: 6.2
 Requires PHP: 7.4
-Stable tag: 0.4.1
+Stable tag: 0.5.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,7 +19,7 @@ The live admin preview loads only when requested. Front-end maps load near the v
 1. Upload calico-map-studio.zip in Plugins > Add New > Upload Plugin, then activate.
 2. Open Map Studio > API Settings and enter your Google Maps JavaScript API browser key.
 3. Enable the Maps JavaScript API and billing in Google Cloud. Restrict the key by website referrer and API. Include staging domains if used.
-4. Create a map, enter coordinates, customize the palette, and load the preview.
+4. Create a map, enter a street address and choose Find address on map, or enter coordinates manually. Add additional locations as needed, customize the palette, and load the preview.
 5. Publish the map and insert its shortcode or the Calico Styled Map Elementor widget.
 
 == Requirements and limits ==
@@ -27,7 +27,7 @@ Google Maps is an external service, with its own usage charges and terms. The br
 
 This plugin renders its own roadmap maps. It cannot recolor existing iframe embeds or Elementor's built-in Google Maps widget. No map ID is used; Cloud styling JSON is a different format and cannot be pasted directly here. Satellite imagery and individual buildings cannot be edited. The buildings color targets Google's man-made landscape category, not individually selectable building objects. Map feature detail varies with location and zoom. Existing API loaders are reused; other plugins may impose their own Google configuration.
 
-Coordinates are entered manually, so no Places or Geocoding API is required. The pin opens coordinates in Google Maps; it is not a verified Business Profile / Place ID lookup. No address autocomplete or multi-location marker clustering is included.
+Address lookup requires the Geocoding API enabled in the same Google Cloud project and allowed in the browser key API restrictions. Enter a full street address, click Find address on map, and check the preview. Up to 50 locations can share one map, with automatic framing or manual center/zoom. Lookup runs only when requested in the editor; public maps use saved coordinates. Manual coordinates do not require Geocoding API. Pins open coordinates in Google Maps, not a verified Business Profile. No address autocomplete or marker clustering is included.
 
 Only administrators can manage maps and the API key. Only published maps render publicly. Drafts are not exposed by shortcode. No settings are deleted on deactivation or uninstall. Disable the plugin to stop rendering its maps. Future stable updates are checked through the public CalicoDesignCo/calico-map-studio GitHub releases. Versions through 0.3.0 require one manual upload of this version to enable that update channel. WordPress automatic updates remain under administrator control.
 
@@ -60,6 +60,11 @@ Browse compatible styles: https://snazzymaps.com/explore
 Bundled style: Ultra Light with Labels by Anonymous, https://snazzymaps.com/style/151/ultra-light-with-labels (CC0-1.0). See THIRD-PARTY-NOTICES.md.
 
 == Changelog ==
+= 0.5.0 =
+* Add street address lookup and up to 50 labeled location pins per map.
+* Automatically fit all locations, with an option to keep manual framing.
+* Preserve existing maps and block unresolved, ambiguous or stale address results from being saved.
+
 = 0.4.1 =
 Accepts quoted numeric style values such as "weight":"2.00", normalizes them to JSON numbers without changing their value, and identifies the exact rule, property and expected range when validation fails.
 

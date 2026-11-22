@@ -151,8 +151,39 @@
         return Pin;
     }
 
+    function locations(config) {
+        if (config.locations !== undefined && (!Array.isArray(config.locations) || config.locations.length > 49)) throw new Error('Use up to 50 locations per map.');
+        return [config, ...(config.locations || [])].map((row, index) => {
+            if (!row || ['lat', 'lng'].some(key => !['string', 'number'].includes(typeof row[key]) || String(row[key]).trim() === '' || !Number.isFinite(Number(row[key]))) || Math.abs(Number(row.lat)) > 85 || Math.abs(Number(row.lng)) > 180) {
+                throw new Error('Location ' + (index + 1) + ': find the address on the map or enter valid coordinates.');
+            }
+            return { lat: Number(row.lat), lng: Number(row.lng), location: row.location || row.address || 'Location ' + (index + 1), pin: config.pin };
+        });
+    }
+
+    async function geocode(address, apiKey) {
+        if (typeof address !== 'string' || !address.trim()) throw new Error('Enter a full street address first.');
+        await load(apiKey);
+        if (!google.maps.Geocoder && google.maps.importLibrary) await google.maps.importLibrary('geocoding');
+        return new Promise((resolve, reject) => {
+            let settled = false;
+            const timeout = setTimeout(() => { settled = true; reject(new Error('Address lookup timed out. Try again or enter coordinates manually.')); }, 20000);
+            new google.maps.Geocoder().geocode({ address: address.trim() }, (results, status) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timeout);
+                if (status !== 'OK' || !results || !results.length) {
+                    const hint = status === 'ZERO_RESULTS' ? 'No matching address. Add the city, state and postal code.' : 'Address lookup failed (' + status + '). Check that Geocoding API is enabled and allowed for your browser key.';
+                    reject(new Error(hint)); return;
+                }
+                resolve(results.map(result => ({ address: result.formatted_address, lat: result.geometry.location.lat(), lng: result.geometry.location.lng(), partial: !!result.partial_match })));
+            });
+        });
+    }
+
     async function render(canvas, config, apiKey) {
         const parsedStyles = styles(config); // Validate before touching a working preview.
+        const points = locations(config);
         await load(apiKey);
         if (!canvas.isConnected) return;
         const center = { lat: Number(config.lat), lng: Number(config.lng) };
@@ -165,13 +196,22 @@
         let state = live.get(canvas);
         if (!state) {
             canvas.textContent = '';
-            state = { map: new google.maps.Map(canvas, options), pin: null };
+            state = { map: new google.maps.Map(canvas, options), pins: [], framing: '' };
             live.set(canvas, state);
         } else state.map.setOptions(options);
-        if (config.show_pin) {
-            if (!state.pin) { const LocationPin = pinClass(); state.pin = new LocationPin(state.map, config); }
-            else { state.pin.config = config; state.pin.draw(); }
-        } else if (state.pin) { state.pin.setMap(null); state.pin = null; }
+        const visible = config.show_pin ? points : [];
+        while (state.pins.length > visible.length) state.pins.pop().setMap(null);
+        visible.forEach((point, index) => {
+            if (!state.pins[index]) { const LocationPin = pinClass(); state.pins[index] = new LocationPin(state.map, point); }
+            else { state.pins[index].config = point; state.pins[index].draw(); }
+        });
+        if (points.length > 1 && config.fit_locations !== false && config.fit_locations !== '0') {
+            const bounds = new google.maps.LatLngBounds();
+            points.forEach(point => bounds.extend({ lat: point.lat, lng: point.lng }));
+            state.map.fitBounds(bounds, 48);
+            // Coincident pins should keep a useful zoom rather than zooming to street level.
+            if (points.every(point => point.lat === points[0].lat && point.lng === points[0].lng)) state.map.setZoom(Number(config.zoom));
+        }
         return state.map;
     }
 
@@ -209,7 +249,7 @@
     function cleanup() {
         live.forEach((state, canvas) => {
             if (canvas.isConnected) return;
-            if (state.pin) state.pin.setMap(null);
+            state.pins.forEach(pin => pin.setMap(null));
             google.maps.event.clearInstanceListeners(state.map);
             live.delete(canvas);
         });
@@ -219,7 +259,7 @@
         live.forEach((state, canvas) => errorMessage(canvas, 'Google Maps authorization failed. Check the API key, billing and allowed domains.'));
         if (typeof previousAuthFailure === 'function') previousAuthFailure();
     };
-    window.CalicoMapStudio = { styles, presets, colorKeys, render, init, schema, validateRules, highlightStyles };
+    window.CalicoMapStudio = { styles, presets, colorKeys, render, init, schema, validateRules, highlightStyles, locations, geocode };
     function ready() {
         init(document);
         new MutationObserver(records => {

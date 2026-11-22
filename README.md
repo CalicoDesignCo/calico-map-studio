@@ -20,12 +20,18 @@ Style the actual features of a Google Map from WordPress: roads, water, landscap
 1. Download **calico-map-studio.zip** from the latest release. Use the attached plugin ZIP, rather than GitHub's automatic source-code archive.
 2. In WordPress, open **Plugins → Add New → Upload Plugin**, select the ZIP and activate it.
 3. Open **Map Studio → API Settings** and enter a Google Maps JavaScript API browser key. Enable that API and billing in Google Cloud, and restrict the key to your website domains and the Maps JavaScript API.
-4. Create a map, enter coordinates, customize its appearance and publish it.
+4. Create a map, enter a street address and choose **Find address on map**, or enter coordinates manually. Add additional locations as needed, customize its appearance and publish it.
 5. Select it in the **Calico Styled Map** Elementor widget, or use the shortcode shown in the map editor.
 
 Example: `[calico_map id="123" height="500"]`.
 
 Requires WordPress 6.2+ and PHP 7.4+. Elementor is optional. Google Maps is an external service with its own billing and terms. Its browser API key is visible by design; restrict it in Google Cloud.
+
+## Addresses and multiple locations
+
+Each map supports a primary location and up to 49 additional labeled addresses. Enter a full address, click **Find address on map**, check the preview and save. **Add location** creates another address/pin. **Automatically fit all locations** frames all saved locations; turn it off to use the primary coordinates and zoom. The same locations render in the Elementor widget and shortcode.
+
+Enable **Geocoding API** in the same Google Cloud project as Maps JavaScript API and allow both in the browser key’s API restrictions. Keep website restrictions enabled. Lookups run only on request in the editor; public maps use saved coordinates. Manual coordinates remain available without Geocoding API. Address changes clear old coordinates; unresolved or ambiguous matches must be corrected before saving. Existing single-pin maps keep their location and styles. Pins open their coordinates in Google Maps. No autocomplete or clustering is included.
 
 ## Guided feature picker
 

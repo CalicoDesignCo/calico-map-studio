@@ -13,15 +13,63 @@
     let timer;
     let revision = 0;
     let picker;
+    const locationList = document.getElementById('cms-location-list');
+    let nextLocation = locationList.querySelectorAll('.cms-location-row').length;
+    let lookups = 0;
     function config() {
         const result = {};
         fields.forEach(field => { result[field.dataset.cmsField] = field.type === 'checkbox' ? field.checked : field.value; });
+        result.locations = Array.from(locationList.querySelectorAll('.cms-location-row')).map(row => {
+            const point = {};
+            row.querySelectorAll('[data-cms-location]').forEach(field => { point[field.dataset.cmsLocation] = field.value; });
+            return point;
+        });
         return result;
     }
+    function locationFields(row) {
+        const primary = row.id === 'cms-primary-location';
+        return Object.fromEntries(['location', 'address', 'lat', 'lng'].map(key => [key, row.querySelector(primary ? '[data-cms-field="' + key + '"]' : '[data-cms-location="' + key + '"]')]));
+    }
+    document.getElementById('cms-add-location').addEventListener('click', () => {
+        if (locationList.children.length >= 49) { status.textContent = 'Use up to 50 locations per map.'; return; }
+        const template = document.getElementById('cms-location-template');
+        const fragment = template.content.cloneNode(true);
+        fragment.querySelectorAll('input').forEach(field => { field.name = field.name.replace('__INDEX__', nextLocation); field.id = field.id.replace('__INDEX__', nextLocation); });
+        fragment.querySelectorAll('label').forEach(label => { label.htmlFor = label.htmlFor.replace('__INDEX__', nextLocation); });
+        nextLocation++;
+        locationList.appendChild(fragment);
+        locationList.lastElementChild.querySelector('input').focus();
+    });
+    editor.addEventListener('click', async event => {
+        const remove = event.target.closest('[data-cms-remove-location]');
+        if (remove) { remove.closest('.cms-location-row').remove(); await update(); return; }
+        const button = event.target.closest('[data-cms-find]');
+        if (!button) return;
+        const row = button.closest('.cms-location-row, #cms-primary-location');
+        const values = locationFields(row);
+        const message = row.querySelector('[data-cms-location-status]');
+        const address = values.address.value;
+        const revision = row.dataset.revision || '0';
+        button.disabled = true; lookups++;
+        message.textContent = 'Finding address…';
+        try {
+            const matches = await studio.geocode(address, editor.dataset.apiKey);
+            if (!row.isConnected || values.address.value !== address || (row.dataset.revision || '0') !== revision) return;
+            if (matches.length > 1) { message.textContent = 'Several addresses matched. Add more detail, such as city and postal code, and try again.'; return; }
+            if (matches[0].partial) { message.textContent = 'Only a partial address matched. Add more detail or enter confirmed coordinates manually.'; return; }
+            values.lat.value = matches[0].lat;
+            values.lng.value = matches[0].lng;
+            message.textContent = 'Found: ' + matches[0].address + '. Check the pin in the preview, then save the map.';
+            active = true;
+            await update();
+        } catch (error) { if (row.isConnected && values.address.value === address) message.textContent = error.message; }
+        finally { button.disabled = false; lookups--; }
+    });
     async function update() {
         const current = ++revision;
         try {
             const c = config();
+            studio.locations(c);
             if (!Number.isFinite(Number(c.lat)) || !Number.isFinite(Number(c.lng)) || c.lat === '' || c.lng === '') throw new Error('Enter valid latitude and longitude.');
             c.lat = Math.max(-85, Math.min(85, Number(c.lat)));
             c.lng = Math.max(-180, Math.min(180, Number(c.lng)));
@@ -40,6 +88,17 @@
     editor.addEventListener('input', event => {
         const field = event.target;
         if (field.closest('#cms-guided-picker')) return;
+        const row = field.closest('.cms-location-row, #cms-primary-location');
+        if (row) {
+            row.dataset.revision = String(Number(row.dataset.revision || 0) + 1);
+            if (field.dataset.cmsField === 'address' || field.dataset.cmsLocation === 'address') {
+                const values = locationFields(row);
+                values.lat.value = ''; values.lng.value = '';
+                row.querySelector('[data-cms-location-status]').textContent = 'Address changed. Find it on the map or enter coordinates before saving.';
+            } else if (['lat', 'lng'].includes(field.dataset.cmsField || field.dataset.cmsLocation)) {
+                row.querySelector('[data-cms-location-status]').textContent = 'Coordinates entered manually. Check the pin in the preview before saving.';
+            }
+        }
         if (field.dataset.cmsPicker) {
             document.getElementById('cms-' + field.dataset.cmsPicker).value = field.value;
         } else if (field.dataset.cmsField) {
@@ -243,7 +302,10 @@
     update();
     // Do not lose the rest of the map form when JSON has a typo.
     document.getElementById('post').addEventListener('submit', event => {
-        try { studio.styles(config()); }
+        try {
+            if (lookups) throw new Error('Wait for address lookup to finish before saving.');
+            studio.locations(config()); studio.styles(config());
+        }
         catch (error) { event.preventDefault(); status.textContent = error.message; document.getElementById('cms-json').focus(); }
     });
 }());
