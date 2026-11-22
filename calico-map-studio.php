@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Calico Map Studio
  * Description: Style Google Maps roads, water, land, labels and more. Reuse maps with Elementor or a shortcode.
- * Version: 0.4.1
+ * Version: 0.5.0
  * Requires at least: 6.2
  * Requires PHP: 7.4
  * Plugin URI: https://github.com/CalicoDesignCo/calico-map-studio
@@ -14,7 +14,7 @@
 if (!defined('ABSPATH')) { exit; }
 
 final class Calico_Map_Studio {
-    const VERSION = '0.4.1';
+    const VERSION = '0.5.0';
     const TYPE = 'calico_styled_map';
     const META = '_calico_map_config';
 
@@ -51,6 +51,7 @@ final class Calico_Map_Studio {
     public static function defaults() {
         return array_merge(array_fill_keys(array_keys(self::colors()), ''), array_fill_keys(array_keys(self::toggles()), false), array(
             'lat' => 41.8781, 'lng' => -87.6298, 'zoom' => 13, 'height' => 420,
+            'address' => '', 'locations' => array(), 'fit_locations' => true,
             'location' => 'Our location', 'pin' => '#d85b3f', 'show_pin' => true, 'zoom_control' => true, 'fullscreen' => true, 'json' => '', 'rules' => '[]',
         ));
     }
@@ -71,6 +72,12 @@ final class Calico_Map_Studio {
         $out['zoom'] = (int) self::number($input['zoom'] ?? null, 13, 1, 20);
         $out['height'] = (int) self::number($input['height'] ?? null, 420, 180, 1200);
         $out['location'] = isset($input['location']) && is_string($input['location']) ? sanitize_text_field($input['location']) : 'Our location';
+        $out['address'] = isset($input['address']) && is_string($input['address']) ? substr(sanitize_text_field($input['address']), 0, 500) : '';
+        $out['fit_locations'] = !isset($input['fit_locations']) || in_array($input['fit_locations'], array('1', 1, true, 'on'), true);
+        $out['locations'] = self::sanitize_locations($input['locations'] ?? array(), $error);
+        if ($out['address'] !== '' && (!self::valid_coordinate($input['lat'] ?? null, -85, 85) || !self::valid_coordinate($input['lng'] ?? null, -180, 180))) {
+            $error = 'Find the primary address on the map or enter valid coordinates before saving.';
+        }
         foreach (array('json', 'rules') as $field) {
             $raw = isset($input[$field]) && is_string($input[$field]) ? trim($input[$field]) : '';
             if ($raw !== '') {
@@ -79,6 +86,24 @@ final class Calico_Map_Studio {
                 if ($field_error) { $error = $field_error; }
                 else { $out[$field] = wp_json_encode($validated); }
             }
+        }
+        return $out;
+    }
+
+    public static function valid_coordinate($value, $min, $max) {
+        return is_scalar($value) && $value !== '' && is_numeric($value) && is_finite((float) $value) && (float) $value >= $min && (float) $value <= $max;
+    }
+
+    public static function sanitize_locations($rows, &$error) {
+        if (!is_array($rows) || count($rows) > 49) { $error = 'Use up to 50 locations per map, including the primary location.'; return array(); }
+        $out = array();
+        foreach ($rows as $row) {
+            if (!is_array($row) || !self::valid_coordinate($row['lat'] ?? null, -85, 85) || !self::valid_coordinate($row['lng'] ?? null, -180, 180)) {
+                $error = 'Find each additional address on the map or enter valid coordinates before saving.'; return array();
+            }
+            $out[] = array('location' => isset($row['location']) && is_string($row['location']) ? substr(sanitize_text_field($row['location']), 0, 200) : '',
+                'address' => isset($row['address']) && is_string($row['address']) ? substr(sanitize_text_field($row['address']), 0, 500) : '',
+                'lat' => (float) $row['lat'], 'lng' => (float) $row['lng']);
         }
         return $out;
     }
@@ -156,7 +181,7 @@ final class Calico_Map_Studio {
         if (!current_user_can('manage_options')) { return; }
         ?>
         <div class="wrap"><h1>Map Studio — API Settings</h1>
-        <p>Enable the Google Maps JavaScript API and billing in your Google Cloud project. Restrict this browser key to your website domains (HTTP referrers) and to the Maps JavaScript API.</p>
+        <p>Enable the Google Maps JavaScript API and billing in your Google Cloud project. Restrict this browser key to your website domains (HTTP referrers) and to the Maps JavaScript API. For address lookup, also enable and allow the Geocoding API.</p>
         <p>The key is sent to visitors’ browsers to display maps. A map ID is not needed for this plugin’s embedded styles.</p>
         <form method="post" action="options.php"><?php settings_fields('calico_map_settings'); ?>
         <table class="form-table"><tr><th><label for="calico-map-key">Browser API key</label></th><td><input class="regular-text" id="calico-map-key" name="calico_map_api_key" value="<?php echo esc_attr(self::key()); ?>" autocomplete="off" spellcheck="false"></td></tr></table>
@@ -196,19 +221,26 @@ final class Calico_Map_Studio {
     public static function editor($post) {
         $c = self::config($post->ID);
         wp_nonce_field('calico_map_save', 'calico_map_nonce');
-        if (get_post_meta($post->ID, '_calico_map_json_error', true)) { echo '<div class="notice notice-error inline"><p>' . esc_html(get_post_meta($post->ID, '_calico_map_json_error', true)) . ' The previously saved detailed rules and JSON were retained.</p></div>'; }
+        if (get_post_meta($post->ID, '_calico_map_json_error', true)) { echo '<div class="notice notice-error inline"><p>' . esc_html(get_post_meta($post->ID, '_calico_map_json_error', true)) . ' The previously saved styles and locations were retained.</p></div>'; }
         ?>
         <div class="cms-editor" data-api-key="<?php echo esc_attr(self::key()); ?>">
         <p class="cms-intro">Color the actual map features. Save once and reuse this map across your site.</p>
         <div class="cms-layout"><div class="cms-controls">
-        <h3>Location</h3><div class="cms-grid">
+        <h3>Primary location</h3><div id="cms-primary-location"><div class="cms-grid">
         <?php
         self::field('location', 'Location / pin label', $c);
+        self::field('address', 'Street address', $c);
         self::field('lat', 'Latitude', $c, 'number', 'min="-85" max="85" step="any"');
         self::field('lng', 'Longitude', $c, 'number', 'min="-180" max="180" step="any"');
+        ?></div><p><button class="button" type="button" data-cms-find>Find address on map</button></p><p data-cms-location-status role="status" aria-live="polite"></p></div><div class="cms-grid"><?php
         self::field('zoom', 'Zoom', $c, 'number', 'min="1" max="20" step="1"');
         self::field('height', 'Default height (px)', $c, 'number', 'min="180" max="1200" step="1"');
-        ?></div><p class="description">In Google Maps, right-click a location to copy its coordinates. Paste latitude and longitude separately here.</p>
+        ?></div><p class="description">Enter a full street address, then choose Find address on map. Check the pin in the preview before saving. Coordinates can also be entered manually. Address lookup requires Google’s Geocoding API.</p>
+        <h3>Additional locations</h3><p>Add up to 49 more locations. Each pin uses the map’s pin color and opens its coordinates in Google Maps.</p>
+        <div id="cms-location-list"><?php foreach ($c['locations'] as $index => $row) { self::location_row($row, $index); } ?></div>
+        <p><button class="button" type="button" id="cms-add-location">Add location</button></p>
+        <label><input type="hidden" name="cms[fit_locations]" value="0"><input type="checkbox" data-cms-field="fit_locations" name="cms[fit_locations]" value="1" <?php checked($c['fit_locations']); ?>> Automatically fit all locations</label>
+        <template id="cms-location-template"><?php self::location_row(array('location' => '', 'address' => '', 'lat' => '', 'lng' => ''), '__INDEX__'); ?></template>
         <section class="cms-style-code" id="cms-style-code" aria-labelledby="cms-code-title"><h3 id="cms-code-title">Paste or share a map style</h3>
         <p>Paste a Google Maps JSON style array from Snazzy Maps or another compatible editor. Code overrides the palette and detailed rules. It does not change your location pin or map controls.</p>
         <p><a class="button" href="https://snazzymaps.com/explore" target="_blank" rel="noopener noreferrer">Browse styles on Snazzy Maps ↗</a> <span class="description">Open a style and copy its JavaScript Style Array. Paste only the JSON array, without JavaScript variable declarations.</span></p>
@@ -251,6 +283,15 @@ final class Calico_Map_Studio {
         <?php
     }
 
+    public static function location_row($row, $index) {
+        echo '<fieldset class="cms-location-row"><legend>Additional location</legend><div class="cms-grid">';
+        foreach (array('location' => 'Location / pin label', 'address' => 'Street address', 'lat' => 'Latitude', 'lng' => 'Longitude') as $key => $label) {
+            $id = 'cms-location-' . $index . '-' . $key;
+            echo '<label class="cms-field" for="' . esc_attr($id) . '"><span>' . esc_html($label) . '</span><input id="' . esc_attr($id) . '" data-cms-location="' . esc_attr($key) . '" name="cms[locations][' . esc_attr($index) . '][' . esc_attr($key) . ']" value="' . esc_attr($row[$key]) . '"' . (in_array($key, array('lat', 'lng'), true) ? ' type="number" step="any" min="' . ($key === 'lat' ? '-85' : '-180') . '" max="' . ($key === 'lat' ? '85' : '180') . '"' : ' type="text" maxlength="500"') . '></label>';
+        }
+        echo '</div><p><button class="button" type="button" data-cms-find>Find address on map</button> <button class="button" type="button" data-cms-remove-location>Remove location</button></p><p data-cms-location-status role="status" aria-live="polite"></p></fieldset>';
+    }
+
     public static function save($id) {
         if ((defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) || wp_is_post_revision($id) || !current_user_can('manage_options') || !current_user_can('edit_post', $id) || !isset($_POST['calico_map_nonce']) || !is_string($_POST['calico_map_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['calico_map_nonce'])), 'calico_map_save')) { return; }
         if (!isset($_POST['cms']) || !is_array($_POST['cms'])) { return; }
@@ -260,6 +301,7 @@ final class Calico_Map_Studio {
             $old = self::config($id);
             $config['json'] = $old['json'];
             $config['rules'] = $old['rules'];
+            foreach (array('lat', 'lng', 'location', 'address', 'locations') as $field) { $config[$field] = $old[$field]; }
             update_post_meta($id, '_calico_map_json_error', $error);
         } else { delete_post_meta($id, '_calico_map_json_error'); }
         update_post_meta($id, self::META, $config);
